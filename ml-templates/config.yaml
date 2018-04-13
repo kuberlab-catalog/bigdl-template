@@ -1,0 +1,161 @@
+kind: MLApp
+metadata:
+  name: bigdl
+spec:
+  package_manager: "pip{{.python_version.value}}"
+  default_mount_path: "/notebooks"
+  packages:
+    - names:
+      {{- range $i, $value := .packages }}
+      - "{{ $value }}"
+      {{- end }}
+      manager: "pip{{.python_version.value}}"
+  tasks:
+  - name: standalone
+    resources:
+    - name: job
+      replicas: 1
+      restartPolicy: Never
+      maxRestartCount: 0
+      allowFail: true
+      {{- if eq .python_version.value "3" }}
+      images:
+        cpu: "kuberlab/pyspark:cpu-36-full"
+      {{- end }}
+      {{- if eq .python_version.value "2" }}
+      images:
+        cpu: "kuberlab/pyspark:cpu-27-full"
+      {{- end }}
+      command: python hello.py
+      workdir: "$SRC_DIR"
+      resources:
+        accelerators:
+          gpu: 0
+        requests:
+          cpu: 100m
+          memory: 64Mi
+        limits:
+          cpu: 1000m
+          memory: 8Gi
+      default_volume_mapping: true
+  - name: spark
+    resources:
+    - name: job
+      replicas: 1
+      restartPolicy: Never
+      maxRestartCount: 0
+      allowFail: true
+      {{- if eq .python_version.value "3" }}
+      images:
+        cpu: "kuberlab/pyspark:cpu-36-full"
+      {{- end }}
+      {{- if eq .python_version.value "2" }}
+      images:
+        cpu: "kuberlab/pyspark:cpu-27-full"
+      {{- end }}
+      command: "echo \"WORKER: $REPLICA_INDEX\";echo \"PSS: $PS_NODES\"; echo \"WORKERS: $WORKER_NODES\"; echo \"BUILD: $BUILD_ID\"; python hello.py"
+      workdir: "$SRC_DIR"
+      resources:
+        accelerators:
+          gpu: 0
+        requests:
+          cpu: 100m
+          memory: 64Mi
+        limits:
+          cpu: 1000m
+          memory: 4Gi
+      port: 2222
+      default_volume_mapping: true
+    - name: worker
+      replicas: 1
+      restartPolicy: Never
+      maxRestartCount: 0
+      {{- if eq .python_version.value "3" }}
+      images:
+        cpu: "kuberlab/pyspark:cpu-36-full"
+      {{- end }}
+      {{- if eq .python_version.value "2" }}
+      images:
+        cpu: "kuberlab/pyspark:cpu-27-full"
+      {{- end }}
+      command: "echo \"PS: $REPLICA_INDEX\";echo \"PSS: $PS_NODES\"; echo \"WORKERS: $WORKER_NODES\"; echo \"BUILD: $BUILD_ID\"; python hello.py"
+      workdir: "$SRC_DIR"
+      port: 2222
+      volumes:
+      - name: lib
+      - name: training
+  uix:
+  - name: jupyter
+    displayName: Jupyter
+    {{- if eq .python_version.value "3" }}
+    images:
+      cpu: "kuberlab/pyspark:cpu-36-full"
+    {{- end }}
+    {{- if eq .python_version.value "2" }}
+    images:
+      cpu: "kuberlab/pyspark:cpu-27-full"
+    {{- end }}
+    resources:
+      requests:
+        cpu: 100m
+        memory: 64Mi
+      limits:
+        cpu: 1000m
+        memory: 4Gi
+    ports:
+    - port: 8888
+      targetPort: 8888
+      protocol: TCP
+      name: http
+    default_volume_mapping: true
+  - name: spark
+    displayName: Spark
+    command: "echo $(hostname -i) '$PROJECT_NAME-spark' >> /etc/hosts && spark-class org.apache.spark.deploy.master.Master --port 7077 --webui-port 8080 --host $PROJECT_NAME-spark"
+    {{- if eq .python_version.value "3" }}
+    images:
+      cpu: "kuberlab/pyspark:cpu-36-full"
+    {{- end }}
+    {{- if eq .python_version.value "2" }}
+    images:
+      cpu: "kuberlab/pyspark:cpu-27-full"
+    {{- end }}
+    ports:
+    - port: 7077
+      targetPort: 7077
+      protocol: TCP
+      name: service
+    - port: 8080
+      targetPort: 8080
+      protocol: TCP
+      name: web
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 1000m
+        memory: 2Gi
+    volumes:
+    - name: lib
+    - name: training
+    - name: data
+  volumes:
+  - isLibDir: false
+    name: training
+    clusterStorage: {{ .storage.value }}
+  - gitRepo:
+      repository: https://github.com/kuberlab-catalog/tensorflow
+    isLibDir: false
+    name: src
+    subPath: tensorflow/src
+  - isLibDir: true
+    name: lib
+    clusterStorage: {{ .storage.value }}
+  - isLibDir: false
+    name: data
+    clusterStorage: {{ .storage.value }}
+  - isLibDir: false
+    mountPath: /notebooks
+    name: code
+    subPath: code
+    clusterStorage: {{ .storage.value }}

@@ -1,0 +1,15 @@
+Description: BigDL
+Engine: gotpl
+Home: http://kuberlab.com
+Icon: https://storage.googleapis.com/kuberlab-images/bigdl-logo-bw.jpg
+Keywords:
+- bigdl
+- template
+- spark
+- kuberlabapptemplate
+Maintainers:
+- Email: agunin@kuberlab.com
+  Name: Gunin Alexander
+Name: tensorflow
+Version: 1.0.0
+Type: mlapp-v2
