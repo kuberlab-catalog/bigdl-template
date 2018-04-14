@@ -11,13 +11,13 @@ spec:
       {{- end }}
       manager: "pip{{.python_version.value}}"
   tasks:
+  {{- if and ( not .spark_master ) (eq .spark_type.value "cluster") }}
   - name: spark-workers
     resources:
     - name: workers
       replicas: 1
       restartPolicy: Never
       maxRestartCount: 0
-      allowFail: true
       {{- if eq .python_version.value "3" }}
       images:
         cpu: "kuberlab/pyspark:cpu-36-full"
@@ -26,8 +26,11 @@ spec:
       images:
         cpu: "kuberlab/pyspark:cpu-27-full"
       {{- end }}
-      command: "spark-class org.apache.spark.deploy.worker.Worker spark://$PROJECT_NAME-spark:7077"
+      command: "spark-class org.apache.spark.deploy.worker.Worker $SPARK_MASTER"
       workdir: "$SRC_DIR"
+      env:
+      - name: SPARK_MASTER
+        value: {{"spark://{{.PROJECT_NAME}}-spark:7077"}}
       resources:
         accelerators:
           gpu: 0
@@ -38,13 +41,13 @@ spec:
           cpu: 1000m
           memory: 8Gi
       default_volume_mapping: true
-  - name: spark
+  {{- end }}
+  - name: spark-job
     resources:
     - name: job
       replicas: 1
       restartPolicy: Never
       maxRestartCount: 0
-      allowFail: true
       {{- if eq .python_version.value "3" }}
       images:
         cpu: "kuberlab/pyspark:cpu-36-full"
@@ -53,8 +56,8 @@ spec:
       images:
         cpu: "kuberlab/pyspark:cpu-27-full"
       {{- end }}
-      command: "echo \"WORKER: $REPLICA_INDEX\";echo \"PSS: $PS_NODES\"; echo \"WORKERS: $WORKER_NODES\"; echo \"BUILD: $BUILD_ID\"; python hello.py"
-      workdir: "$SRC_DIR"
+      command: "python test.py"
+      workdir: "$SRC_DIR/src"
       resources:
         accelerators:
           gpu: 0
@@ -64,12 +67,25 @@ spec:
         limits:
           cpu: 1000m
           memory: 4Gi
+      env:
+      {{- if .spark_master }}
+      - name: SPARK_MASTER
+        value: {{ .spark_master }}
+      {{- else if eq .spark_type.value "cluster" }}
+      - name: SPARK_MASTER
+        value: {{"spark://{{.PROJECT_NAME}}-spark:7077"}}
+      {{- else }}
+      - name: SPARK_MASTER
+        value: "local[*]"
+      {{- end }}
       port: 2222
       default_volume_mapping: true
+    {{- if and ( not .spark_master ) (eq .spark_type.value "cluster") }}
     - name: worker
       replicas: 1
       restartPolicy: Never
       maxRestartCount: 0
+      is_permanent: true
       {{- if eq .python_version.value "3" }}
       images:
         cpu: "kuberlab/pyspark:cpu-36-full"
@@ -78,12 +94,16 @@ spec:
       images:
         cpu: "kuberlab/pyspark:cpu-27-full"
       {{- end }}
-      command: "spark-class org.apache.spark.deploy.worker.Worker spark://$PROJECT_NAME-spark:7077"
+      command: "spark-class org.apache.spark.deploy.worker.Worker $SPARK_MASTER"
       workdir: "$SRC_DIR"
       port: 2222
+      env:
+      - name: SPARK_MASTER
+        value: {{"spark://{{.PROJECT_NAME}}-spark:7077"}}
       volumes:
       - name: lib
       - name: training
+    {{- end }}
   uix:
   - name: jupyter
     displayName: Jupyter
@@ -102,12 +122,24 @@ spec:
       limits:
         cpu: 1000m
         memory: 4Gi
+    env:
+    {{- if .spark_master }}
+    - name: SPARK_MASTER
+      value: {{ .spark_master }}
+    {{- else if eq .spark_type.value "cluster" }}
+    - name: SPARK_MASTER
+      value: {{"spark://{{.PROJECT_NAME}}-spark:7077"}}
+    {{- else }}
+    - name: SPARK_MASTER
+      value: "local[*]"
+    {{- end }}
     ports:
     - port: 8888
       targetPort: 8888
       protocol: TCP
       name: http
     default_volume_mapping: true
+  {{- if eq .spark_type.value "cluster" }}
   - name: spark
     displayName: Spark
     command: "echo $(hostname -i) $PROJECT_NAME-spark >> /etc/hosts  && spark-class -Dspark.ui.proxyBase=/../../../../../../../$URL_PREFIX org.apache.spark.deploy.master.Master --port 7077 --webui-port 8080 --host $PROJECT_NAME-spark"
@@ -139,15 +171,16 @@ spec:
     - name: lib
     - name: training
     - name: data
+  {{- end }}
   volumes:
   - isLibDir: false
     name: training
     clusterStorage: {{ .storage.value }}
   - gitRepo:
-      repository: https://github.com/kuberlab-catalog/tensorflow
+      repository: https://github.com/kuberlab-catalog/bigdl-template
     isLibDir: false
     name: src
-    subPath: tensorflow/src
+    subPath: bigdl-template
   - isLibDir: true
     name: lib
     clusterStorage: {{ .storage.value }}

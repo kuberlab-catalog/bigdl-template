@@ -13,3 +13,13 @@ python_version:
     - "2"
     - "3"
 
+spark_master: ""
+spark_type:
+  value: "cluster"
+  wizard:
+    name: "Local or Cluster spark mode"
+    kind: select
+    options:
+    - "cluster"
+    - "local"
+
