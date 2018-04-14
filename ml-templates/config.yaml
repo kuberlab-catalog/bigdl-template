@@ -97,6 +97,15 @@ spec:
       command: "spark-class org.apache.spark.deploy.worker.Worker $SPARK_MASTER"
       workdir: "$SRC_DIR"
       port: 2222
+      resources:
+        accelerators:
+          gpu: 0
+        requests:
+          cpu: 100m
+          memory: 64Mi
+        limits:
+          cpu: 4000m
+          memory: 4Gi
       env:
       - name: SPARK_MASTER
         value: {{"spark://{{.PROJECT_NAME}}-spark:7077"}}
