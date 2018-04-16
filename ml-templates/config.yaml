@@ -186,10 +186,10 @@ spec:
     name: training
     clusterStorage: {{ .storage.value }}
   - gitRepo:
-      repository: {{ gitRepo .git.value }}
+      repository: {{ gitRepo .src.value }}
     isLibDir: false
     name: src
-    subPath: {{ gitSubPath .git.value }}
+    subPath: {{ gitSubPath .src.value }}
   - isLibDir: true
     name: lib
     clusterStorage: {{ .storage.value }}
