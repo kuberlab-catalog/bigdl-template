@@ -186,10 +186,10 @@ spec:
     name: training
     clusterStorage: {{ .storage.value }}
   - gitRepo:
-      repository: https://github.com/kuberlab-catalog/bigdl-template
+      repository: {{ gitRepo .git.value }}
     isLibDir: false
     name: src
-    subPath: bigdl-template
+    subPath: {{ gitSubPath .git.value }}
   - isLibDir: true
     name: lib
     clusterStorage: {{ .storage.value }}
