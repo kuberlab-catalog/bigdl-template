@@ -20,6 +20,7 @@ src:
     kind: git
 
 spark_master: ""
+
 spark_type:
   value: "cluster"
   wizard:
