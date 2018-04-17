@@ -14,7 +14,7 @@ python_version:
     - "3"
 
 src:
-  value: spark-bigdl-examples
+  value: https://github.com/kuberlab/spark-bigdl-examples
   wizard:
     name: "Source Code"
     kind: git
