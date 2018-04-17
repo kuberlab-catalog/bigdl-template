@@ -60,7 +60,7 @@ spec:
         cpu: "kuberlab/pyspark:cpu-27-full"
       {{- end }}
       command: "python spark-test.py"
-      workdir: "$SRC_DIR/src"
+      workdir: "$SRC_DIR"
       resources:
         accelerators:
           gpu: 0
