@@ -14,25 +14,24 @@ python_version:
     - "3"
 
 src:
-  value: https://github.com/kuberlab-catalog/bigdl-template/src
+  value: spark-bigdl-examples
   wizard:
     name: "Source Code"
     kind: git
 
-spark_master: ""
-
 spark_type:
   value: "cluster"
   wizard:
-    name: "Local or Cluster spark mode"
+    name: "Local or Cluster spark mode. Or use external spark cluster."
     kind: select
+    dynamic: true
     options:
     - "cluster"
     - "local"
 
 dataset:
- value: empty
- version: '0.0.0'
+ value: ''
+ version: ''
  workspace: ''
  wizard:
    name: "Dataset configuration"

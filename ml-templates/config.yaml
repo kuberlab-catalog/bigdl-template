@@ -11,7 +11,7 @@ spec:
       {{- end }}
       manager: "pip{{.python_version.value}}"
   tasks:
-  {{- if and ( not .spark_master ) (eq .spark_type.value "cluster") }}
+  {{- if eq .spark_type.value "cluster" }}
   - name: spark-workers
     resources:
     - name: workers
@@ -40,7 +40,10 @@ spec:
         limits:
           cpu: 1000m
           memory: 8Gi
-      default_volume_mapping: true
+      volumes:
+      - name: lib
+      - name: training
+      - name: data
   {{- end }}
   - name: spark-job
     resources:
@@ -56,7 +59,7 @@ spec:
       images:
         cpu: "kuberlab/pyspark:cpu-27-full"
       {{- end }}
-      command: "python test.py"
+      command: "python spark-test.py"
       workdir: "$SRC_DIR/src"
       resources:
         accelerators:
@@ -68,19 +71,18 @@ spec:
           cpu: 1000m
           memory: 4Gi
       env:
-      {{- if .spark_master }}
-      - name: SPARK_MASTER
-        value: {{ .spark_master }}
-      {{- else if eq .spark_type.value "cluster" }}
+      {{- if eq .spark_type.value "cluster" }}
       - name: SPARK_MASTER
         value: {{"spark://{{.PROJECT_NAME}}-spark:7077"}}
-      {{- else }}
+      {{- else if eq .spark_type.value "local"}}
       - name: SPARK_MASTER
         value: "local[*]"
+      {{- else }}
+      - name: SPARK_MASTER
+        value: {{ .spark_type.value }}
       {{- end }}
-      port: 2222
       default_volume_mapping: true
-    {{- if and ( not .spark_master ) (eq .spark_type.value "cluster") }}
+    {{- if eq .spark_type.value "cluster" }}
     - name: worker
       replicas: 1
       restartPolicy: Never
@@ -112,6 +114,7 @@ spec:
       volumes:
       - name: lib
       - name: training
+      - name: data
     {{- end }}
   uix:
   - name: jupyter
@@ -132,15 +135,15 @@ spec:
         cpu: 1000m
         memory: 4Gi
     env:
-    {{- if .spark_master }}
-    - name: SPARK_MASTER
-      value: {{ .spark_master }}
-    {{- else if eq .spark_type.value "cluster" }}
+    {{- if eq .spark_type.value "cluster" }}
     - name: SPARK_MASTER
       value: {{"spark://{{.PROJECT_NAME}}-spark:7077"}}
-    {{- else }}
+    {{- else if eq .spark_type.value "local"}}
     - name: SPARK_MASTER
       value: "local[*]"
+    {{- else }}
+    - name: SPARK_MASTER
+      value: {{ .spark_type.value }}
     {{- end }}
     ports:
     - port: 8888
@@ -178,8 +181,6 @@ spec:
         memory: 2Gi
     volumes:
     - name: lib
-    - name: training
-    - name: data
   {{- end }}
   volumes:
   - isLibDir: false
@@ -194,10 +195,18 @@ spec:
     name: lib
     clusterStorage: {{ .storage.value }}
   - isLibDir: false
-    name: data
-    clusterStorage: {{ .storage.value }}
-  - isLibDir: false
     mountPath: /notebooks
     name: code
     subPath: code
     clusterStorage: {{ .storage.value }}
+  - isLibDir: false
+    name: data
+    {{- if .dataset.value }}
+    datasetFS:
+      workspace: {{ .dataset.workspace }}
+      dataset: {{ .dataset.value }}
+      version: {{ .dataset.version }}
+    {{- else }}
+    clusterStorage: {{ .storage.value }}
+    {{- end }}
+
