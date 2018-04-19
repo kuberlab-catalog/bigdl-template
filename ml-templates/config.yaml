@@ -98,7 +98,6 @@ spec:
       {{- end }}
       command: "spark-class org.apache.spark.deploy.worker.Worker $SPARK_MASTER"
       workdir: "$SRC_DIR"
-      port: 2222
       resources:
         accelerators:
           gpu: 0
